@@ -286,7 +286,7 @@ const CONFIG = {
   // Điền 3 giá trị dưới đây theo hướng dẫn trong SOP để chạy với dữ liệu thật.
   // Để trống -> ứng dụng tự chạy ở chế độ DEMO (dữ liệu mẫu, không cần Google).
   GOOGLE_CLIENT_ID: "94055741992-5im0dc2qp4rc147k7audqme8fs62dakj.apps.googleusercontent.com",   // OAuth Client ID từ Google Cloud Console
-  API_URL: "https://script.google.com/macros/s/AKfycbxp9jG8r0RC7FMY1A7DVs_q0maidNPgcjSyzRugmiD8b4wc2wQleNpOGTsER3I6Vl-m/exec",            // URL /exec của Apps Script Web App (Api.gs)
+  API_URL: "https://script.google.com/macros/s/AKfycbxp9jG8r0RC7FMY1A7DVs_q0maidNPgcjSyzRugmiD8b4wc2wQleNpOGTsER3I6VI-m/exec",            // URL /exec của Apps Script Web App (Api.gs)
   ORG_NAME: "Phòng Truyền Thông Marketing",
 };
 const DEMO_MODE = !CONFIG.GOOGLE_CLIENT_ID || !CONFIG.API_URL;
@@ -903,7 +903,17 @@ function openModal(title, bodyHtml, footButtons){
     </div>`;
   byId('modal-close').addEventListener('click', closeModal);
   byId('modal-backdrop').addEventListener('click', e=>{ if(e.target.id==='modal-backdrop') closeModal(); });
-  (footButtons||[]).forEach((b,i)=> byId('modal-btn-'+i).addEventListener('click', b.onClick));
+  (footButtons||[]).forEach((b,i)=> byId('modal-btn-'+i).addEventListener('click', async (ev)=>{
+    const btn = ev.currentTarget;
+    try{
+      if(btn) btn.disabled = true;
+      await b.onClick();
+    } catch(err){
+      toast("Lỗi: " + (err && err.message ? err.message : String(err)));
+    } finally {
+      if(btn) btn.disabled = false;
+    }
+  }));
 }
 function closeModal(){ byId('modal-root').innerHTML=''; }
 
@@ -1064,8 +1074,8 @@ function renderNhanSu(){
 }
 
 function openStaffModal(maNV){
-  const s = maNV ? DB.nhanSu.find(x=>x.maNV===maNV) : {maNV:'', hoTen:'', email:'', sdt:'', viTri:POSITIONS[0], vaiTro:'NhanVien', ngayVao: fmtDate(new Date()), trangThai:'DangLamViec'};
   const isGD = currentUser.vaiTro==='GiamDoc';
+  const s = maNV ? DB.nhanSu.find(x=>x.maNV===maNV) : {maNV:'', hoTen:'', email:'', sdt:'', viTri: isGD?POSITIONS[0]:currentUser.viTri, vaiTro:'NhanVien', ngayVao: fmtDate(new Date()), trangThai:'DangLamViec'};
   const body = `
     <div class="field"><label>Họ và tên</label><input id="f-hoten" value="${esc(s.hoTen)}"></div>
     <div class="field-row">
@@ -1073,7 +1083,7 @@ function openStaffModal(maNV){
       <div class="field"><label>Số điện thoại</label><input id="f-sdt" value="${esc(s.sdt)}"></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Vị trí</label><select id="f-vitri">${["Ban Giám đốc",...POSITIONS].map(p=>`<option ${s.viTri===p?'selected':''}>${p}</option>`).join('')}</select></div>
+      <div class="field"><label>Vị trí</label><select id="f-vitri" ${isGD?'':'disabled'}>${["Ban Giám đốc",...POSITIONS].map(p=>`<option ${s.viTri===p?'selected':''}>${p}</option>`).join('')}</select></div>
       <div class="field"><label>Vai trò (phân quyền)</label><select id="f-vaitro" ${isGD?'':'disabled'}>
         ${Object.entries(ROLE_LABEL).map(([k,v])=>`<option value="${k}" ${s.vaiTro===k?'selected':''}>${v}</option>`).join('')}
       </select></div>
